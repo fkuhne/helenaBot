@@ -16,9 +16,14 @@ enum motorState {STOP = 0, RUN};
 class DCMotor
 {
 public:
-  DCMotor() {};
+  DCMotor();
+  /* This is when the H bridge has two signals to control the direction. */
   DCMotor(const int enable, const int inA, const int inB);
-
+  /* This is when the H bridge has only one signal to control the direction,
+   *   that is, the two signals needed to operate the H bridge are generated
+   *   by hardware. */
+  DCMotor(const int enable, const int direction);
+  
   int enable_pin;
   int inA_pin;
   int inB_pin;
@@ -36,7 +41,7 @@ public:
   int setState(DCMotor& motor, const motorState state);
   int setState(const motorState state);
   int setDutyCycle(DCMotor& motor, const unsigned int dutyCycle);
-  int setDutyCycle(const unsigned int dutyCycleLeft, const unsigned int dutyCycleRight);
+  int setDutyCycle(const unsigned int dutyCycle1, const unsigned int dutyCycle2);
   int setDutyCycle(const unsigned int dutyCycle);
   int setDirection(DCMotor& motor, const motorDirection direction);
   int setDirection(const motorDirection direction);

@@ -44,13 +44,38 @@ const float deadBand = 20.0; /* Deadband region which keeps the robot stopped. *
 unsigned long timeReceived = 0; /* Records when the last vlaid frame has been received. */
 unsigned long timeoutBetweenCommand = 1000; /* Timeout between received commands, in milisseconds. */
 
+/*
+ * Function
+ * Channel A: direction = D12
+ *            PWM = D3
+ *            Brake = D9
+ *            Current sensor = A0
+ * Channel B: direction = D13
+ *            PWM = D11
+ *            Brake = D8
+ *            Current sensor = AA
+ * If you don't need the Brake and the Current Sensing and you also need more
+ *   pins for your application you can disable this features by cutting the
+ *   respective jumpers on the back side of the shield. 
+ * Motors Connection:  you can drive two Brushed DC motors by connecting the
+ *   two wires of each one in the (+) and (-) screw terminals for each channel
+ *   A and B. In this way you can control its direction by setting HIGH or LOW
+ *   the DIR A and DIR B pins, you can control the speed by varying the PWM A
+ *   and PWM B duty cycle values. The Brake A and Brake B pins, if set HIGH,
+ *   will effectively brake the DC motors rather than let them slow down by
+ *   cutting the power. You can measure the current going through the DC motor
+ *   by reading the SNS0 and SNS1 pins. On each channel will be a voltage
+ *   proportional to the measured current, which can be read as a normal
+ *   analog input, through the function analogRead() on the analog input A0 and
+ *   A1. For your convenience it is calibrated to be 3.3V when the channel is
+ *   delivering its maximum possible current, that is 2A. 
+ */
+
 /* Pins used for motors: */
-const int enable1_pin = 9;
-const int inA1_pin = 2;
-const int inB1_pin = 3;
-const int enable2_pin = 10;
-const int inA2_pin = 5;
-const int inB2_pin = 4;
+const int enable1_pin = 3;
+const int direction1_pin = 12;
+const int enable2_pin = 11;
+const int direction2_pin = 13;
 
 /* Software serial pins definition for bluetooth. */
 const int btSerialRX_pin = 7; 
@@ -60,8 +85,8 @@ const int btSerialTX_pin = 8;
  * through a voltage divider: 5V---( 1k )--[RX]--(2k)---GND */
 SoftwareSerial SerialBLE(btSerialRX_pin, btSerialTX_pin); // RX, TX
 
-DCMotor motor1(enable1_pin, inA1_pin, inB1_pin);
-DCMotor motor2(enable2_pin, inA2_pin, inB2_pin);
+DCMotor motor1(enable1_pin, direction1_pin);
+DCMotor motor2(enable2_pin, direction2_pin);
 L298N l298n(motor1, motor2);
 
 /* Read the digital Y and X values from the joystick and map them to linear

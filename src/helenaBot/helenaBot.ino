@@ -206,6 +206,20 @@ void toggleConnectionLed()
     connectionLed.on();
 }
 
+void updateBatteryStatus()
+{
+  /* http://cuddletech.com/?p=1030 */
+  
+  float batt = analogRead(A13);
+  /*batt /= 4095;
+  batt *= 2;
+  batt *= 3.3;
+  batt *= 1.1;*/
+  Blynk.virtualWrite(V0, batt);
+  Serial.println("Battery level: ");
+  Serial.print(batt);
+}
+
 void setup()
 {
   pinMode(builtInLed, OUTPUT);
@@ -225,7 +239,9 @@ void setup()
     Serial.println("Blynky connected.");
   }
 
+  updateBatteryStatus();
   timer.setInterval(1000, toggleConnectionLed);
+  timer.setInterval(10000, updateBatteryStatus);
 
   Serial.println("Exiting setup!");
 }

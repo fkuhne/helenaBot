@@ -31,15 +31,27 @@
     MERGE mode means device will receive both x and y within 1 message
  *************************************************************/
    
-#include <BlynkSimpleSerialBLE.h>
-#include <SoftwareSerial.h>
+#include <WiFi.h>
+#include <WiFiClient.h>
+#include <BlynkSimpleEsp32.h>
 #include "L298N.h"
+
+#if(ESP_PLATFORM)
+  #define min(a,b) ((a)<(b)?(a):(b));
+  #define max(a,b) ((a)>(b)?(a):(b));
+#endif
 
 // You should get Auth Token in the Blynk App.
 // Go to the Project Settings (nut icon).
 char auth[] = "3e4d303c46524e0e96efca065804b527";
 
-#define BLYNK_PRINT Serial /* Comment this out to disable prints and save space */
+//#define BLYNK_PRINT Serial /* Comment this out to disable prints and save space */
+
+// Your WiFi credentials.
+// Set password to "" for open networks.
+char ssid[] = "YourNetworkName";
+char pass[] = "YourPassword";
+
 const float deadBand = 20.0; /* Deadband region which keeps the robot stopped. */
 unsigned long timeReceived = 0; /* Records when the last vlaid frame has been received. */
 unsigned long timeoutBetweenCommand = 1000; /* Timeout between received commands, in milisseconds. */
@@ -72,18 +84,10 @@ unsigned long timeoutBetweenCommand = 1000; /* Timeout between received commands
  */
 
 /* Pins used for motors: */
-const int enable1_pin = 3;
-const int direction1_pin = 12;
-const int enable2_pin = 11;
-const int direction2_pin = 13;
-
-/* Software serial pins definition for bluetooth. */
-const int btSerialRX_pin = 7; 
-const int btSerialTX_pin = 8;
-
-/* Connect the HC-05 TX to Arduino pin 2 RX and HC-05 RX to Arduino pin 3 TX
- * through a voltage divider: 5V---( 1k )--[RX]--(2k)---GND */
-SoftwareSerial SerialBLE(btSerialRX_pin, btSerialTX_pin); // RX, TX
+const int enable1_pin = 14; //3;
+const int direction1_pin = 15; //12;
+const int enable2_pin = 32; //11;
+const int direction2_pin = 33; //13;
 
 DCMotor motor1(enable1_pin, direction1_pin);
 DCMotor motor2(enable2_pin, direction2_pin);
@@ -146,29 +150,29 @@ void applyControlSignals(int digitalX, int digitalY)
  
   /* Distribute the signals for left and right wheels, acoording to the
    * speeds. */
-  int leftPercentage = vPercentage + wPercentage;
-  int rightPercentage = vPercentage - wPercentage;
+  int percentage1 = vPercentage + wPercentage;
+  int percentage2 = vPercentage - wPercentage;
 
   /* Computes a scale factor. If any result exceeds 100% then adjust the scale
    * so that the result = 100% and use same scale value for other motor. */
-  float maxPercentage = max(abs(leftPercentage), abs(rightPercentage));
+  float maxPercentage = max(abs(percentage1), abs(percentage2));
   float scale = min(1.0,(100.0/maxPercentage));
-  leftPercentage *= scale;
-  rightPercentage *= scale;
+  percentage1 *= scale;
+  percentage2 *= scale;
 
   /* Duty Cycle for the motors. */
-  int PWMLeft = map(abs(leftPercentage), 0.0, 100.0, 0.0, 255.0);
-  int PWMRight = map(abs(rightPercentage), 0.0, 100.0, 0.0, 255.0);
+  int pwm1 = map(abs(percentage1), 0.0, 100.0, 0.0, 255.0);
+  int pwm2 = map(abs(percentage2), 0.0, 100.0, 0.0, 255.0);
 
-  Serial.print("PWMLeft = "); Serial.print(PWMLeft);
-  Serial.print(leftPercentage > 0 ? " (FW)" : " (BW)");
-  Serial.print(", PWMRight = "); Serial.print(PWMRight);
-  Serial.println(rightPercentage > 0 ? " (FW)" : " (BW)");
+  Serial.print("pwm1 = "); Serial.print(pwm1);
+  Serial.print(percentage1 > 0 ? " (FW)" : " (BW)");
+  Serial.print(", pwm2 = "); Serial.print(pwm2);
+  Serial.println(percentage2 > 0 ? " (FW)" : " (BW)");
 
   /* Finally, apply the control signals. */
-  l298n.setDirection(motor1, (leftPercentage > 0) ? FW : BW);
-  l298n.setDirection(motor2, (rightPercentage > 0) ? FW : BW);
-  l298n.setDutyCycle(PWMLeft, PWMRight);
+  l298n.setDirection(motor1, (percentage1 > 0) ? FW : BW);
+  l298n.setDirection(motor2, (percentage2 > 0) ? FW : BW);
+  l298n.setDutyCycle(pwm1, pwm2);
 }
 
 // This function will be called every time Slider Widget
@@ -193,10 +197,9 @@ BLYNK_WRITE(V1)
 void setup()
 {
   // Debug console
-  Serial.begin(9600);
+  Serial.begin(115200);
 
-  SerialBLE.begin(9600);
-  Blynk.begin(SerialBLE, auth);
+  Blynk.begin(auth, ssid, pass);
 
   Serial.println("Waiting for connections...");
 }
@@ -204,6 +207,8 @@ void setup()
 void loop()
 {
   Blynk.run();
+
+  testBridgeAndMotors();
 
   unsigned long timeNow = millis();
   /* Compute the time interval between the last received frame
@@ -215,4 +220,25 @@ void loop()
     l298n.setState(STOP);
   }
 }
+
+/* Just a test function, in case you want to make sure the wirings are OK. */
+void testBridgeAndMotors()
+{
+  l298n.setState(RUN);
+
+  l298n.setDirection(FW);
+  l298n.setState(RUN);
+  delay(1000);
+
+  l298n.setState(STOP);
+  delay(1000);
+
+  l298n.setDirection(BW);
+  l298n.setState(RUN);
+  delay(1000);
+
+  l298n.setState(STOP);
+  delay(1000);
+}
+
 

@@ -30,7 +30,9 @@
     Two Axis Joystick on V1 in MERGE output mode.
     MERGE mode means device will receive both x and y within 1 message
  *************************************************************/
-   
+
+#define BLYNK_PRINT Serial /* Comment this out to disable prints and save space */
+
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <BlynkSimpleEsp32.h>
@@ -43,18 +45,20 @@
 
 // You should get Auth Token in the Blynk App.
 // Go to the Project Settings (nut icon).
-char auth[] = "3e4d303c46524e0e96efca065804b527";
-
-//#define BLYNK_PRINT Serial /* Comment this out to disable prints and save space */
+char auth[] = "2027d42aad2948a4b2a08f317886a9a8";
 
 // Your WiFi credentials.
 // Set password to "" for open networks.
-char ssid[] = "YourNetworkName";
-char pass[] = "YourPassword";
+char ssid[] = "GVT-A339";
+char pass[] = "0073162810";
 
-const float deadBand = 20.0; /* Deadband region which keeps the robot stopped. */
+SimpleTimer timer;
+WidgetLED connectionLed(V2);
+const int builtInLed = 13;
+
+const float deadBand = 0.0; /* Deadband region which keeps the robot stopped. */
 unsigned long timeReceived = 0; /* Records when the last vlaid frame has been received. */
-unsigned long timeoutBetweenCommand = 1000; /* Timeout between received commands, in milisseconds. */
+unsigned long timeoutBetweenCommand = 10000; /* Timeout between received commands, in milisseconds. */
 
 /*
  * Function
@@ -65,7 +69,7 @@ unsigned long timeoutBetweenCommand = 1000; /* Timeout between received commands
  * Channel B: direction = D13
  *            PWM = D11
  *            Brake = D8
- *            Current sensor = AA
+ *            Current sensor = A1
  * If you don't need the Brake and the Current Sensing and you also need more
  *   pins for your application you can disable this features by cutting the
  *   respective jumpers on the back side of the shield. 
@@ -194,28 +198,51 @@ BLYNK_WRITE(V1)
   applyControlSignals(x, y);
 }
 
+void toggleConnectionLed()
+{
+  if(connectionLed.getValue())
+    connectionLed.off();
+  else
+    connectionLed.on();
+}
+
 void setup()
 {
+  pinMode(builtInLed, OUTPUT);
+  digitalWrite(builtInLed, HIGH);
+  
   // Debug console
   Serial.begin(115200);
+  Serial.println("Starting...");
 
   Blynk.begin(auth, ssid, pass);
 
-  Serial.println("Waiting for connections...");
+  connectionLed.off();
+
+  if(Blynk.connected())
+  {
+    digitalWrite(builtInLed, LOW);  
+    Serial.println("Blynky connected.");
+  }
+
+  timer.setInterval(1000, toggleConnectionLed);
+
+  Serial.println("Exiting setup!");
 }
 
 void loop()
 {
   Blynk.run();
+  timer.run();
 
-  testBridgeAndMotors();
+  //testBridgeAndMotors();
 
   unsigned long timeNow = millis();
   /* Compute the time interval between the last received frame
    *  and now. If higher than 1 second, turn off the motors. */
   if(timeNow - timeReceived > timeoutBetweenCommand)
   {
-    Serial.println("Communication timeout. Turning off motors.");
+    //Serial.println("Communication timeout. Turning off motors.");
     timeReceived = millis();
     l298n.setState(STOP);
   }

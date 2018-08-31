@@ -49,19 +49,21 @@ char auth[] = "2027d42aad2948a4b2a08f317886a9a8";
 
 // Your WiFi credentials.
 // Set password to "" for open networks.
-char ssid[] = "GVT-A339";
-char pass[] = "0073162810";
+char ssid[] = "GVT-A339"; //"DBLABDevices"; 
+char pass[] = "0073162810"; //"@rdu!n0$";
 
 SimpleTimer timer;
 WidgetLED connectionLed(V2);
 const int builtInLed = 13;
 
+// Attach virtual serial terminal to Virtual Pin V0
+//WidgetTerminal terminal(V0);
+
 const float deadBand = 0.0; /* Deadband region which keeps the robot stopped. */
 unsigned long timeReceived = 0; /* Records when the last vlaid frame has been received. */
 unsigned long timeoutBetweenCommand = 10000; /* Timeout between received commands, in milisseconds. */
 
-/*
- * Function
+/* Pins used for motors:
  * Channel A: direction = D12
  *            PWM = D3
  *            Brake = D9
@@ -70,24 +72,7 @@ unsigned long timeoutBetweenCommand = 10000; /* Timeout between received command
  *            PWM = D11
  *            Brake = D8
  *            Current sensor = A1
- * If you don't need the Brake and the Current Sensing and you also need more
- *   pins for your application you can disable this features by cutting the
- *   respective jumpers on the back side of the shield. 
- * Motors Connection:  you can drive two Brushed DC motors by connecting the
- *   two wires of each one in the (+) and (-) screw terminals for each channel
- *   A and B. In this way you can control its direction by setting HIGH or LOW
- *   the DIR A and DIR B pins, you can control the speed by varying the PWM A
- *   and PWM B duty cycle values. The Brake A and Brake B pins, if set HIGH,
- *   will effectively brake the DC motors rather than let them slow down by
- *   cutting the power. You can measure the current going through the DC motor
- *   by reading the SNS0 and SNS1 pins. On each channel will be a voltage
- *   proportional to the measured current, which can be read as a normal
- *   analog input, through the function analogRead() on the analog input A0 and
- *   A1. For your convenience it is calibrated to be 3.3V when the channel is
- *   delivering its maximum possible current, that is 2A. 
  */
-
-/* Pins used for motors: */
 const int enable1_pin = 14; //3;
 const int direction1_pin = 15; //12;
 const int enable2_pin = 32; //11;
@@ -173,14 +158,35 @@ void applyControlSignals(int digitalX, int digitalY)
   Serial.print(", pwm2 = "); Serial.print(pwm2);
   Serial.println(percentage2 > 0 ? " (FW)" : " (BW)");
 
+  /*terminal.print("pwm1 = "); terminal.print(pwm1);
+  terminal.print(percentage1 > 0 ? " (FW)" : " (BW)");
+  terminal.print(", pwm2 = "); terminal.print(pwm2);
+  terminal.println(percentage2 > 0 ? " (FW)" : " (BW)");
+  terminal.flush();*/
+
+  motorDirection dir1, dir2;
+  
   /* Finally, apply the control signals. */
   l298n.setDirection(motor1, (percentage1 > 0) ? FW : BW);
   l298n.setDirection(motor2, (percentage2 > 0) ? FW : BW);
   l298n.setDutyCycle(pwm1, pwm2);
 }
 
-// This function will be called every time Slider Widget
-// in Blynk app writes values to the Virtual Pin 1
+
+/* Callback for terminal. */
+/*BLYNK_WRITE(V0)
+{
+  if(String("en1 on")==param.asStr()) digitalWrite(14, HIGH);
+  else if(String("en1 off")==param.asStr()) digitalWrite(14, LOW);
+  else if(String("en2 on")==param.asStr()) digitalWrite(32, HIGH);
+  else if(String("en2 off")==param.asStr()) digitalWrite(32, LOW);
+  else if(String("dir1 fw")==param.asStr()) digitalWrite(15, HIGH);
+  else if(String("dir1 bw")==param.asStr()) digitalWrite(15, LOW);
+  else if(String("dir2 fw")==param.asStr()) digitalWrite(33, HIGH);
+  else if(String("dir2 bw")==param.asStr()) digitalWrite(33, LOW);
+}*/
+
+/* Callback for joystick. */
 BLYNK_WRITE(V1)
 {
   /* Get the current time the command has been received. */
@@ -189,26 +195,27 @@ BLYNK_WRITE(V1)
   int x = param[0].asInt();
   int y = param[1].asInt();
 
-  // Do something with x and y
-  Serial.print("X = ");
+  /*Serial.print("X = ");
   Serial.print(x);
   Serial.print("; Y = ");
   Serial.println(y);
+  terminal.print("X = ");
+  terminal.print(x);
+  terminal.print("; Y = ");
+  terminal.println(y);*/
 
   applyControlSignals(x, y);
 }
 
 void toggleConnectionLed()
 {
-  if(connectionLed.getValue())
-    connectionLed.off();
-  else
-    connectionLed.on();
+  if(connectionLed.getValue()) connectionLed.off();
+  else connectionLed.on();
 }
 
 void updateBatteryStatus()
 {
-  /* http://cuddletech.com/?p=1030 */
+  /* http://cuddletech.com/?p=1030, https://www.esp32.com/viewtopic.php?t=881 */
   
   float batt = analogRead(A13);
   /*batt /= 4095;
@@ -222,6 +229,8 @@ void updateBatteryStatus()
 
 void setup()
 {
+  l298n.setState(STOP);
+  
   pinMode(builtInLed, OUTPUT);
   digitalWrite(builtInLed, HIGH);
   
@@ -229,7 +238,10 @@ void setup()
   Serial.begin(115200);
   Serial.println("Starting...");
 
+  /* For cloud Blynk server. */
   Blynk.begin(auth, ssid, pass);
+  /* For local server. */
+  //Blynk.begin(auth, ssid, pass, IPAddress(192,168,1,100), 8080);
 
   connectionLed.off();
 
@@ -237,13 +249,14 @@ void setup()
   {
     digitalWrite(builtInLed, LOW);  
     Serial.println("Blynky connected.");
+    //terminal.clear();
+    //terminal.println("Blynky connected.");
   }
 
-  updateBatteryStatus();
-  timer.setInterval(1000, toggleConnectionLed);
-  timer.setInterval(10000, updateBatteryStatus);
+  timer.setInterval(2000, toggleConnectionLed);
 
   Serial.println("Exiting setup!");
+  //terminal.println("Exiting setup!");
 }
 
 void loop()
@@ -253,21 +266,21 @@ void loop()
 
   //testBridgeAndMotors();
 
-  unsigned long timeNow = millis();
+  //unsigned long timeNow = millis();
   /* Compute the time interval between the last received frame
    *  and now. If higher than 1 second, turn off the motors. */
-  if(timeNow - timeReceived > timeoutBetweenCommand)
+  /*if(timeNow - timeReceived > timeoutBetweenCommand)
   {
     //Serial.println("Communication timeout. Turning off motors.");
     timeReceived = millis();
     l298n.setState(STOP);
-  }
+  }*/
 }
 
 /* Just a test function, in case you want to make sure the wirings are OK. */
 void testBridgeAndMotors()
 {
-  l298n.setState(RUN);
+  l298n.setState(STOP);
 
   l298n.setDirection(FW);
   l298n.setState(RUN);

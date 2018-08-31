@@ -56,6 +56,7 @@ public:
 
 private:
   DCMotor _motor1, _motor2;
+  motorState _motorState;
   int pwmChannel1, pwmChannel2;
 };
 

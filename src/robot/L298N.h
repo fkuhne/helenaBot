@@ -49,7 +49,7 @@ class L298N
 public:
   L298N(DCMotor& motor1, DCMotor& motor2);
   int setState(const motorState state);
-  int setDutyCycle(const unsigned int dutyCycle1, const unsigned int dutyCycle2);
+  int setDutyCycle(unsigned int dutyCycle1, unsigned int dutyCycle2);
   int setDutyCycle(const unsigned int dutyCycle);
   int setDirection(DCMotor& motor, const motorDirection direction);
   int setDirection(const motorDirection direction);

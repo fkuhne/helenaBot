@@ -55,8 +55,8 @@ int L298N::setState(const motorState state)
   if(_motor1.enable_pin < 0 || _motor2.enable_pin < 0)
     return -1;
 
-  if(_motorState == state)
-    return 0;
+  //if(_motorState == state)
+    //return 0;
     
   if(state == STOP) 
   {
@@ -69,26 +69,25 @@ int L298N::setState(const motorState state)
     digitalWrite(_motor2.enable_pin, HIGH);
   }
   
-  _motor1._motorState = _motor2._motorState = state;
+  _motor1._motorState = state;
+  _motor2._motorState = state;
   _motorState = state;
 
   return 0;
 }
 
-int L298N::setDutyCycle(const unsigned int dutyCycle1, const unsigned int dutyCycle2)
+int L298N::setDutyCycle(unsigned int dutyCycle1, unsigned int dutyCycle2)
 {
-  /* MOTOR 1 */
-  if(_motor1.enable_pin < 0 || dutyCycle1 > 255)
+  if(_motor1.enable_pin < 0 || _motor2.enable_pin < 0)
     return -1;
+
+  dutyCycle1 = constrain(dutyCycle1, 0, 255);
+  dutyCycle2 = constrain(dutyCycle2, 0, 255);
 
   if(dutyCycle1 == 0) digitalWrite(_motor1.enable_pin, LOW);
   else analogWrite(_motor1.enable_pin, dutyCycle1);
-
-  /* MOTOR 2 */
-  if(_motor2.enable_pin < 0 || dutyCycle2 > 255)
-    return -1;
     
-  if(dutyCycle2 == 0) digitalWrite(_motor2.enable_pin, 0);
+  if(dutyCycle2 == 0) digitalWrite(_motor2.enable_pin, LOW);
   else analogWrite(_motor2.enable_pin, dutyCycle2);
 
   return 0;

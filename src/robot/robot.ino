@@ -7,11 +7,12 @@
  */
 
 #include "L298N.h"
+#include <SoftwareSerial.h>
 
-const int builtInLed = 13;
-const int serialFrameSize = 11; /* Fixed size for a frame received through serial. */
+//const int builtInLed = 13;
+const int serialFrameSize = 10; /* Fixed size for a frame received through serial. */
 
-const float deadBand = 10.0; /* Deadband region which keeps the robot stopped. */
+const float deadBand = 0.0; /* Deadband region which keeps the robot stopped. */
 unsigned long timeReceived = 0; /* Records when the last vlaid frame has been received. */
 unsigned long timeoutBetweenCommand = 10000; /* Timeout between received commands, in milisseconds. */
 
@@ -24,25 +25,28 @@ DCMotor motor1(enable1_pin, direction1_pin);
 DCMotor motor2(enable2_pin, direction2_pin);
 L298N l298n(motor1, motor2);
 
+const int sSerialRx_pin = 7;
+const int sSerialTx_pin = 8;
+SoftwareSerial sSerial(sSerialRx_pin, sSerialTx_pin);
+
 /* This function was based on the example from
  * https://www.arduino.cc/en/Tutorial/ReadASCIIString. */
 int waitCompleteSentence(int *digitalX, int *digitalY)
 {
   /* Wait for an entire frame to be received. */
-  if(Serial.available() < serialFrameSize)
+  if(sSerial.available() < serialFrameSize)
     return -1;
 
   /* Once the frame is completed, we can parse it. */
-  *digitalX = Serial.parseInt();
-  *digitalY = Serial.parseInt();
+  *digitalX = sSerial.parseInt();
+  *digitalY = sSerial.parseInt();
 
-  if(Serial.read() == '\n')
-  {
-    Serial.flush(); /* Clean up spurious data. */
-    return 0;
-  }
-
-  return -1;
+  Serial.print("digitalX = "); Serial.print(*digitalX);
+  Serial.print(", digitalY = "); Serial.println(*digitalY);
+  
+  //if(sSerial.read() == '\n') sSerial.flush(); /* Clean up spurious data. */
+  sSerial.read(); sSerial.flush(); /* Clean up spurious data. */
+  return 0;
 }
 
 /* Read the digital Y and X values from the joystick and map them to linear
@@ -63,14 +67,15 @@ int waitCompleteSentence(int *digitalX, int *digitalY)
  */
 void applyControlSignals(int digitalX, int digitalY)
 {
-  const float deadbandLowerLimit = 1023.0 / 2.0 - deadBand;
-  const float deadbandUpperLimit = 1023.0 / 2.0 + deadBand;
+  const float deadbandLowerLimit = 512 - deadBand;
+  const float deadbandUpperLimit = 512 + deadBand;
 
   /* If it's inside the deadband area, turn off the motors and return. */
-  if(digitalX > deadbandLowerLimit &&
+  /*if(digitalX > deadbandLowerLimit &&
      digitalX < deadbandUpperLimit &&
      digitalY > deadbandLowerLimit &&
-     digitalY < deadbandUpperLimit)
+     digitalY < deadbandUpperLimit)*/
+  if(digitalX == 512 && digitalY == 512)
   {
     l298n.setState(STOP);
     return;
@@ -131,14 +136,16 @@ void setup()
 {
   l298n.setState(STOP);
   
-  pinMode(builtInLed, OUTPUT);
-  digitalWrite(builtInLed, HIGH);
+//  pinMode(builtInLed, OUTPUT);
+//  digitalWrite(builtInLed, HIGH);
   
   // Debug console
-  Serial.begin(115200);
+  Serial.begin(9600);
   Serial.println("Starting...");
 
-    digitalWrite(builtInLed, LOW);  
+  sSerial.begin(9600);
+
+//  digitalWrite(builtInLed, LOW);  
 
   Serial.println("Exiting setup!");
 }
@@ -146,37 +153,120 @@ void setup()
 void loop()
 {
 
+//testBridgeAndMotors();
+//return;
+
   /* Initialize with invalid data so that at each loop we can know if some
    *   valid has been received. */
   int digitalX = -1;
   int digitalY = -1;
 
+  unsigned long timeNow = millis();
+
   /* Check for valid data. */
   if(waitCompleteSentence(&digitalX, &digitalY) == 0)
   {
+    timeReceived = millis();
+
     /* Generate PWM values from joystick values. */
     applyControlSignals(digitalX, digitalY);
+  }
+  else
+  {
+    /* Compute the time interval between the last received frame
+     *  and now. If higher than 1 second, turn of the motors. */
+    if(timeNow - timeReceived > 1000)
+    {
+      Serial.println("Communication timeout. Turning off motors.");
+      timeReceived = millis();
+      l298n.setState(STOP);
+    }
   }
 }
 
 /* Just a test function, in case you want to make sure the wirings are OK. */
 void testBridgeAndMotors()
 {
-  l298n.setState(STOP);
+  int delayTime = 2000;
+  l298n.setState(RUN);
 
+  digitalWrite(direction1_pin, HIGH);
+  digitalWrite(direction2_pin, HIGH);
+  Serial.println("direction1_pin HIGH, direction2_pin HIGH");
+  Serial.print("direction1_pin = "); Serial.print(digitalRead(direction1_pin));
+  Serial.print(", direction2_pin = "); Serial.println(digitalRead(direction2_pin));
+  delay(delayTime);
+
+  digitalWrite(direction1_pin, LOW);
+  digitalWrite(direction2_pin, LOW);
+  Serial.println("direction1_pin LOW, direction2_pin LOW");
+  Serial.print("direction1_pin = "); Serial.print(digitalRead(direction1_pin));
+  Serial.print(", direction2_pin = "); Serial.println(digitalRead(direction2_pin));
+  delay(delayTime);
+
+  digitalWrite(direction1_pin, HIGH);
+  digitalWrite(direction2_pin, LOW);
+  Serial.println("direction1_pin HIGH, direction2_pin LOW");
+  Serial.print("direction1_pin = "); Serial.print(digitalRead(direction1_pin));
+  Serial.print(", direction2_pin = "); Serial.println(digitalRead(direction2_pin));
+  delay(delayTime);
+
+  digitalWrite(direction1_pin, LOW);
+  digitalWrite(direction2_pin, HIGH);
+  Serial.println("direction1_pin LOW, direction2_pin HIGH");
+  Serial.print("direction1_pin = "); Serial.print(digitalRead(direction1_pin));
+  Serial.print(", direction2_pin = "); Serial.println(digitalRead(direction2_pin));
+  delay(delayTime);
+
+  l298n.setDirection(motor1, FW);
+  l298n.setDirection(motor2, BW);
+  Serial.println("motor1 FW, motor2 BW");
+  Serial.print("direction1_pin = "); Serial.print(digitalRead(direction1_pin));
+  Serial.print(", direction2_pin = "); Serial.println(digitalRead(direction2_pin));
+  delay(delayTime);
+
+  l298n.setDirection(motor1, BW);
+  l298n.setDirection(motor2, FW);
+  Serial.println("motor1 BW, motor2 FW");
+  Serial.print("direction1_pin = "); Serial.print(digitalRead(direction1_pin));
+  Serial.print(", direction2_pin = "); Serial.println(digitalRead(direction2_pin));
+  delay(delayTime);
+
+  l298n.setDirection(motor1, FW);
+  l298n.setDirection(motor2, FW);
+  Serial.println("motor1 FW, motor2 FW");
+  Serial.print("direction1_pin = "); Serial.print(digitalRead(direction1_pin));
+  Serial.print(", direction2_pin = "); Serial.println(digitalRead(direction2_pin));
+  delay(delayTime);
+
+  l298n.setDirection(motor1, BW);
+  l298n.setDirection(motor2, BW);
+  Serial.println("motor1 BW, motor2 BW");
+  Serial.print("direction1_pin = "); Serial.print(digitalRead(direction1_pin));
+  Serial.print(", direction2_pin = "); Serial.println(digitalRead(direction2_pin));
+  delay(delayTime);
+  
   l298n.setDirection(FW);
   l298n.setState(RUN);
-  delay(1000);
+  Serial.println("setDirection FW");
+  Serial.print("direction1_pin = "); Serial.print(digitalRead(direction1_pin));
+  Serial.print(", direction2_pin = "); Serial.println(digitalRead(direction2_pin));
+  delay(delayTime);
 
   l298n.setState(STOP);
-  delay(1000);
+  Serial.println("STOP");
+  delay(delayTime);
 
   l298n.setDirection(BW);
   l298n.setState(RUN);
-  delay(1000);
+  Serial.println("setDirection BW");
+  Serial.print("direction1_pin = "); Serial.print(digitalRead(direction1_pin));
+  Serial.print(", direction2_pin = "); Serial.println(digitalRead(direction2_pin));
+  delay(delayTime);
 
   l298n.setState(STOP);
-  delay(1000);
+  Serial.println("STOP");
+  delay(delayTime);
 }
 
 

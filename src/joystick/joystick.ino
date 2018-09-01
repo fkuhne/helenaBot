@@ -30,10 +30,13 @@
   This example code is in public domain.
   
  *************************************************************/
-
+ 
+//#define BLYNK_PRINT Serial
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <BlynkSimpleEsp32.h>
+
+HardwareSerial Serial1(2);
 
 const int serialFrameSize = 11;
 unsigned long timeReceived = 0; /* records when the last vlaid frame has been received. */
@@ -81,26 +84,31 @@ void setup()
 
   timer.setInterval(1000, toggleConnectionLed);
 
-  Serial.begin(115200);
+  //Serial.begin(9600);
+  /* Serial port from pins 16 and 17. */
+  Serial1.begin(9600);
   delay(1000);
 }
 
 void loop()
 {
   Blynk.run();
-  timer.run();
+  //timer.run();
 
   unsigned long timeNow = millis();
-  if(timeNow - timeReceived > 200)
+  if(timeNow - timeReceived > 100)
   {    
     timeReceived = millis();
-    char sendBuffer[serialFrameSize] = "";
+    char sendBuffer[serialFrameSize+1];
+    memset(sendBuffer, 0, serialFrameSize+1);
   
     /* Format the numbers with four digits, so we can fix the frame size that
      *   will be transmitted. */
     snprintf(sendBuffer, serialFrameSize, "%04d,%04d\n", receivedX, receivedY);
-    Serial.print(sendBuffer);
-    Serial.flush();
+    Serial1.print(sendBuffer);
+    //Serial1.flush();
+
+    //Serial.print(sendBuffer);
   }
 }
 

@@ -50,8 +50,8 @@ char auth[] = "2027d42aad2948a4b2a08f317886a9a8";
 
 // Your WiFi credentials.
 // Set password to "" for open networks.
-char ssid[] = "GVT-A339"; //"DBLABDevices"; 
-char pass[] = "0073162810"; //"@rdu!n0$";
+char ssid[] = "Mini maker Faire";
+char pass[] = "maker1234";
 
 SimpleTimer timer;
 WidgetLED connectionLed(V2);
@@ -72,19 +72,23 @@ void toggleConnectionLed()
 
 void setup()
 {
+  //Serial.begin(9600);
   pinMode(builtInLed, OUTPUT);
   digitalWrite(builtInLed, HIGH);
   
   /* For cloud Blynk server. */
   Blynk.begin(auth, ssid, pass);
 
+  /* For local Blynk server - none of them worked. :( */
+  //Blynk.begin(auth, "GVT-A339", "0073162810", IPAddress(169,254,68,130), 8080);
+  //Blynk.begin(auth, "GVT-A339", "0073162810", IPAddress(192,168,25,179), 8080);
+  
   connectionLed.off();
 
   if(Blynk.connected()) digitalWrite(builtInLed, LOW);
 
   timer.setInterval(1000, toggleConnectionLed);
 
-  //Serial.begin(9600);
   /* Serial port from pins 16 and 17. */
   Serial1.begin(9600);
   delay(1000);

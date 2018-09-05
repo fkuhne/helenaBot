@@ -135,17 +135,12 @@ void applyControlSignals(int digitalX, int digitalY)
 void setup()
 {
   l298n.setState(STOP);
-  
-//  pinMode(builtInLed, OUTPUT);
-//  digitalWrite(builtInLed, HIGH);
-  
+
   // Debug console
   Serial.begin(9600);
   Serial.println("Starting...");
 
   sSerial.begin(9600);
-
-//  digitalWrite(builtInLed, LOW);  
 
   Serial.println("Exiting setup!");
 }
@@ -155,6 +150,40 @@ void loop()
 
 //testBridgeAndMotors();
 //return;
+
+  l298n.setDirection(FW); // andar pra frente
+  l298n.setState(RUN);
+  delay(2000);
+  
+  l298n.setState(STOP);
+  delay(500);
+  
+  l298n.setDirection(BW); // andar pra trás
+  l298n.setState(RUN);
+  delay(2000);
+
+  l298n.setState(STOP);
+  delay(500);
+
+  l298n.setDirection(motor1, FW);
+  l298n.setDirection(motor2, BW);
+  l298n.setState(RUN);
+  delay(2000);
+
+  l298n.setState(STOP);
+  delay(500);
+
+  l298n.setDirection(motor1, BW);
+  l298n.setDirection(motor2, FW);
+  l298n.setState(RUN);
+  delay(2000);
+
+  l298n.setState(STOP);
+  delay(500);
+  
+  
+  return;
+
 
   /* Initialize with invalid data so that at each loop we can know if some
    *   valid has been received. */
